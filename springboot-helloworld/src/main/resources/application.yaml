@@ -1,0 +1,27 @@
+person:
+  userName: 张三
+  boss: true
+  birth: 2019/12/12 20:12:33
+  age: 18
+  pet:
+    name: tomcat
+    weight: 23.4
+  interests: [ 篮球,足球 ]
+  animal:
+    - jerry
+    - mario
+  score:
+    english:
+      first: 30
+      second: 40
+      third: 50
+    math: [ 131,140,148 ]
+    chinese: { first: 128,second: 136 }
+  salary: [ 99999,99999.98,99999.99 ]
+  allPets:
+    sick:
+      - { name: tom }
+      - { name: jerry,weight: 47 }
+      - name: 阿猫
+        weight: 88.88
+    health: [ { name: mario,weight: 47 },{ name: 阿毛,weight: 47 } ]
