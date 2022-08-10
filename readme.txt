@@ -369,4 +369,126 @@ https://www.yuque.com/atguigu/springboot
           </plugins>
       </build>
 
+6. Web 开发
+   1) 静态资源访问
+      a) 只要静态资源放在类路径下: /static (or /public or /resources or /META-INF/resources)
+        访问: 当前项目根路径/ + 静态资源名 ex. localhost:8080/pic.png
+        改变默认的静态资源路径:
+        spring.web.resources.static-locations=[classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/]
+
+      b) 原理: 静态映射 /**
+        请求先通过DispatcherServlet，如果DispatcherServlet不能处理再交给静态资源处理器
+        静态资源也找不到就会报404
+
+      c) 静态资源访问前缀
+         - 默认无前缀: spring.mvc.static-path-pattern=/**
+         - 添加访问前缀
+           spring:
+             mvc:
+               static-path-pattern: /res/**
+           访问: 当前项目 + static-path-pattern + 静态资源名 = 静态资源文件夹下找
+
+      d) webjar
+         - 自动映射 /webjars/**
+         - https://www.webjars.org/
+         - 访问地址：http://localhost:8080/webjars/jquery/3.5.1/jquery.js 后面地址要按照依赖里面的包路径
+
+   2) 欢迎页支持
+      a) 静态路径下 index.html
+         - 可以配置静态资源路径 spring.web.resources.static-locations
+         - 但是不可以配置静态资源的访问前缀 spring.mvc.static-path-pattern. 否则导致 index.html不能被默认访问
+      b) controller 处理 /index 请求
+
+   3) 自定义 Favicon
+      - favicon.ico 放在静态资源目录下即可
+
+   4) 静态资源配置原理
+      - SpringBoot启动默认加载 xxxAutoConfiguration 类 (自动配置类)
+      - SpringMVC功能的自动配置类 WebMvcAutoConfiguration
+
+      @Configuration(proxyBeanMethods = false)
+      @ConditionalOnWebApplication(type = Type.SERVLET)
+      @ConditionalOnClass({ Servlet.class, DispatcherServlet.class, WebMvcConfigurer.class })
+      @ConditionalOnMissingBean(WebMvcConfigurationSupport.class)
+      @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE + 10)
+      @AutoConfigureAfter({ DispatcherServletAutoConfiguration.class, TaskExecutionAutoConfiguration.class,
+      		ValidationAutoConfiguration.class })
+      public class WebMvcAutoConfiguration {}
+
+      - WebMvcAutoConfiguration 给容器中配置了什么:
+        @Configuration(proxyBeanMethods = false)
+        @Import(EnableWebMvcConfiguration.class)
+        @EnableConfigurationProperties({ WebMvcProperties.class, ResourceProperties.class })
+        @Order(0)
+        public static class WebMvcAutoConfigurationAdapter implements WebMvcConfigurer {}
+
+      - 配置文件的相关属性和xxx进行了绑定
+        WebMvcProperties==spring.mvc
+        ResourceProperties==spring.resources
+
+      a) 扩展: 当一个配置类只有一个有参构造器时
+         - 有参构造器所有参数的值都会从容器中确定
+         - ResourceProperties resourceProperties 获取和spring.resources绑定的所有的值的对象
+         - WebMvcProperties mvcProperties 获取和spring.mvc绑定的所有的值的对象
+         - ListableBeanFactory beanFactory Spring的beanFactory
+         - HttpMessageConverters 找到所有的HttpMessageConverters
+         - ResourceHandlerRegistrationCustomizer 找到 资源处理器的自定义器
+         - DispatcherServletPath
+         - ServletRegistrationBean 给应用注册Servlet、Filter....
+
+          public WebMvcAutoConfigurationAdapter(ResourceProperties resourceProperties, WebMvcProperties mvcProperties,
+                ListableBeanFactory beanFactory, ObjectProvider<HttpMessageConverters> messageConvertersProvider,
+                ObjectProvider<ResourceHandlerRegistrationCustomizer> resourceHandlerRegistrationCustomizerProvider,
+                ObjectProvider<DispatcherServletPath> dispatcherServletPath,
+                ObjectProvider<ServletRegistrationBean<?>> servletRegistrations) {
+              this.resourceProperties = resourceProperties;
+              this.mvcProperties = mvcProperties;
+              this.beanFactory = beanFactory;
+              this.messageConvertersProvider = messageConvertersProvider;
+              this.resourceHandlerRegistrationCustomizer = resourceHandlerRegistrationCustomizerProvider.getIfAvailable();
+              this.dispatcherServletPath = dispatcherServletPath;
+              this.servletRegistrations = servletRegistrations;
+            }
+
+      b) 资源处理的默认规则
+         - spring.resources.addMappings=false -> 禁用所有静态资源规则 (默认true)
+
+      c) 欢迎页的处理规则
+         - 要使用欢迎页功能 (index.html) -> 必须使用 /**
+
+   5) 请求参数处理
+      1) 请求映射 (@xxxMapping)
+         - Rest风格支持（使用HTTP请求方式动词来表示对资源的操作）
+           - 以前: /getUser   获取用户     /deleteUser 删除用户    /editUser  修改用户       /saveUser 保存用户
+           - 现在: /user    GET-获取用户    DELETE-删除用户     PUT-修改用户      POST-保存用户
+           - 核心Filter；HiddenHttpMethodFilter
+             - 用法: 表单method=post 隐藏域 _method=put
+             - SpringBoot中手动开启 spring.mvc.hiddenmethod.filter=true
+               @Bean
+               @ConditionalOnMissingBean(HiddenHttpMethodFilter.class)
+               @ConditionalOnProperty(prefix = "spring.mvc.hiddenmethod.filter", name = "enabled", matchIfMissing = false)
+               public OrderedHiddenHttpMethodFilter hiddenHttpMethodFilter() {
+                 return new OrderedHiddenHttpMethodFilter();
+               }
+
+         - Rest原理（表单提交要使用REST的时候）
+           - 表单提交会带上 _method=PUT
+           - 请求过来被HiddenHttpMethodFilter拦截
+             - 判断请求正常，并且是POST
+               - 获取到_method的值
+               - 兼容以下请求；PUT.DELETE.PATCH
+               - 原生request(post)，包装模式requestWrapper重写了getMethod方法，返回的是传入的值
+               - 过滤器链放行的时候用wrapper。以后的方法调用getMethod是调用requestWrapper的
+
+         - Rest使用客户端工具，
+           - 如PostMan直接发送 Put Delete 等方式请求，无需Filter
+
+         - 扩展：如何把 _method 这个名字换成我们自己喜欢的
+           //自定义filter
+           @Bean
+           public HiddenHttpMethodFilter hiddenHttpMethodFilter(){
+               HiddenHttpMethodFilter methodFilter = new HiddenHttpMethodFilter();
+               methodFilter.setMethodParam("_m");
+               return methodFilter;
+           }
 
