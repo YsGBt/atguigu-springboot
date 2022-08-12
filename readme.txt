@@ -457,7 +457,7 @@ https://www.yuque.com/atguigu/springboot
          - 要使用欢迎页功能 (index.html) -> 必须使用 /**
 
    5) 请求参数处理
-      1) 请求映射 (@xxxMapping)
+      a) 请求映射 (@xxxMapping)
          - Rest风格支持（使用HTTP请求方式动词来表示对资源的操作）
            - 以前: /getUser   获取用户     /deleteUser 删除用户    /editUser  修改用户       /saveUser 保存用户
            - 现在: /user    GET-获取用户    DELETE-删除用户     PUT-修改用户      POST-保存用户
@@ -492,7 +492,7 @@ https://www.yuque.com/atguigu/springboot
                return methodFilter;
            }
 
-      2) 请求映射原理
+      b) 请求映射原理
          - SpringMVC功能分析都从 org.springframework.web.servlet.DispatcherServlet -> doDispatch()
            protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
            		HttpServletRequest processedRequest = request;
@@ -534,5 +534,99 @@ https://www.yuque.com/atguigu/springboot
            return null;
          }
 
-      3) 普通参数与基本注解
+      c) 普通参数与基本注解
+         1. 注解
+            - @PathVariable
+            - @RequestParam
+            - @RequestHeader
+            - @RequestAttribute
+            - @CookieValue
+            - @RequestBody
+            - @ModelAttribute
+            - @MatrixVariable
+              - 注意: SpringBoot 默认是禁用了矩阵变量功能
+                - 手动开始 (在@Configuration注解标注的类下):
+
+                  @Bean
+                  public WebMvcConfigurer webMvcConfigurer() {
+                    WebMvcConfigurer webMvcConfigurer = new WebMvcConfigurer() {
+                      @Override
+                      public void configurePathMatch(PathMatchConfigurer configurer) {
+                        UrlPathHelper urlPathHelper = new UrlPathHelper();
+                        urlPathHelper.setRemoveSemicolonContent(false);
+                        configurer.setUrlPathHelper(urlPathHelper);
+                      }
+                    };
+                    return webMvcConfigurer;
+                  }
+
+              - queryString 查询字符串 (?): /cars/{path}?xxx=xxx&aaa=ccc
+              - matrix 矩阵变量 (;): /cars/sell;low=34;brand=byd,audi,yd
+                - 矩阵变量必须有url路径变量才能被解析
+                - 例子:
+                  // /boss/1;age=20/2;age=10
+                  @GetMapping("/boss/{bossId}/{empId}")
+                  public Map boss(@MatrixVariable(value = "age", pathVar = "bossId") Integer bossAge,
+                      @MatrixVariable(value = "age", pathVar = "empId") Integer empAge) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("bossAge", bossAge);
+                    map.put("empAge", empAge);
+                    return map;
+                  }
+              - 页面开发，cookie禁用了，session里面的内容怎么使用
+                - session.set(a,b) ---> jsessionid ---> cookie ----> 每次发请求携带
+                - url重写: /abc;jsesssionid=xxxx 把cookie的值使用矩阵变量的方式进行传递
+
+         2. Servlet API
+            - SpringBoot 也允许方法传入ServletAPI来作为参数
+            - ServletRequestMethodArgumentResolver  可以解析以下的部分参数
+            - WebRequest ServletRequest MultipartRequest
+              HttpSession javax.servlet.http.PushBuilder
+              Principal InputStream Reader HttpMethod
+              Locale TimeZone ZoneId
+
+         3. 复杂参数
+
+      d) POJO封装过程
+
+      e) 参数处理原理
+         1. HandlerMapping中找到能处理请求的Handler (控制器方法)
+
+         2. 为当前 Handler 找一个适配器 HandlerAdapter
+            - 一共有四种 HandlerAdapter:
+              a. RequestMappingHandlerAdapter - 支持方法上标注@RequestMapping注解的
+              b. HandlerFunctionAdapter - 支持函数式编程的
+              c. HttpRequestHandlerAdapter
+              d. SimpleControllerHandlerAdapter
+
+         3. 适配器执行目标方法并确定方法参数的每一个值
+            a. DispatcherServlet 中 doDispatch:
+               mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
+
+            b. RequestMappingHandlerAdapter 中 handle -> handleInternal-> invokeHandlerMethod:
+               mav = invokeHandlerMethod(request, response, handlerMethod); //执行目标方法
+
+            c. HandlerMethodArgumentResolver 参数解析器 (ex. RequestParamMethodArgumentResolver, PathVariableMethodArgumentResolver)
+               - 确定将要执行的目标方法的参数值
+               - SpringMVC 目标方法能写多少中参数类型取决于参数解析器
+               - 参数解析器内部方法:
+                 1) supportsParameter(MethodParameter): boolean
+                 2) resolverArgument(MethodParameter, ModelAndViewContainer,...): Object
+               - 判断参数解析器是否支持解析当前参数，如果支持就调用resolverArgument进行解析
+
+            d. ReturnValueHandler 返回值处理器 (ex. ModelAndViewMethodReturnValueHandler)
+
+            e. RequestMappingHandlerAdapter 中 invokeHandlerMethod -> invokeAndHandle:
+               invocableMethod.invokeAndHandle(webRequest, mavContainer);
+
+            f. ServletInvocableHandlerMethod 中 invocableMethod -> invokeForRequest:
+               // 真正执行目标方法并获取返回值
+               Object returnValue = invokeForRequest(webRequest, mavContainer, providedArgs);
+
+            g. InvocableHandlerMethod 中 invokeForRequest -> getMethodArgumentValues
+               //获取方法的参数值
+               Object[] args = getMethodArgumentValues(request, mavContainer, providedArgs);
+
+
+
 
