@@ -586,8 +586,39 @@ https://www.yuque.com/atguigu/springboot
               Locale TimeZone ZoneId
 
          3. 复杂参数
+            - Map Model RedirectAttributes ServletResponse
+            - Errors/BindingResult SessionStatus UriComponentsBuilder ServletUriComponentsBuilder
 
       d) POJO封装过程
+         - 数据绑定: 页面提交的请求数据(Get, Post)都可以和对象属性进行绑定
+         - ServletModelAttributeMethodProcessor 支持解析
+         - WebDataBinder: web数据绑定器，将请求参数的值绑定到指定的JavaBean里面
+         - WebDataBinder 利用它里面的 Converters 将请求数据转成指定的数据类型，再次封装到JavaBean中
+         - GenericConversionService: 在设置每一个值的时候，找它里面的所有converter
+                                     找到可以将这个数据类型(request带来的参数的字符串)转换到指定的类型
+         - 可以给 WebDataBinder 里面放自己的Converter
+           @Bean
+           public WebMvcConfigurer webMvcConfigurer() {
+            WebMvcConfigurer webMvcConfigurer = new WebMvcConfigurer() {
+              @Override
+              public void addFormatters(FormatterRegistry registry) {
+                registry.addConverter(new Converter<String, Pet>() {
+                  @Override
+                  public Pet convert(String source) {
+                    if (StringUtils.hasLength(source)) {
+                      Pet pet = new Pet();
+                      String[] split = source.split(",");
+                      pet.setName(split[0]);
+                      pet.setAge(Integer.parseInt(split[1]));
+                      return pet;
+                    }
+                    return null;
+                  }
+                });
+              }
+            };
+            return webMvcConfigurer;
+           }
 
       e) 参数处理原理
          1. HandlerMapping中找到能处理请求的Handler (控制器方法)
@@ -599,7 +630,7 @@ https://www.yuque.com/atguigu/springboot
               c. HttpRequestHandlerAdapter
               d. SimpleControllerHandlerAdapter
 
-         3. 适配器执行目标方法并确定方法参数的每一个值
+         3. 适配器执行目标方法并确定方法参数的每一个值，并执行方法
             a. DispatcherServlet 中 doDispatch:
                mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
@@ -626,6 +657,69 @@ https://www.yuque.com/atguigu/springboot
             g. InvocableHandlerMethod 中 invokeForRequest -> getMethodArgumentValues
                //获取方法的参数值
                Object[] args = getMethodArgumentValues(request, mavContainer, providedArgs);
+
+         4. 目标方法执行完成
+            a. 将所有的数据都放在 ModelAndViewContainer 包含要去的页面地址View 还包含Model数据
+
+         5. 处理派发结果
+            a. Dispatcher 中 doDispatch:
+               processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
+
+            b. AbstractView:
+               renderMergedOutputModel(mergedModel, getRequestToExpose(request), response);
+
+            c. InternalResourceView:
+               exposeModelAsRequestAttributes(model, request); //model中的所有数据遍历挨个放在请求域中
+
+      f) 数据响应与内容协商
+         1. 响应 JSON (jackson + @ResponseBody)
+            - 引入 spring-boot-starter-web -> 自动引入 spring-boot-starter-json 依赖
+            - jackson + @ResponseBody -> 给前端自动返回json数据
+
+         2. ReturnValueHandlers 返回值解析器 (ex. ModelAndViewMethodReturnValueHandler, ResponseBodyEmitterReturnValueHandler)
+            - supportsReturnType(methodParameter): boolean
+            - handleReturnValue(Object, methodParameter, ...): Object
+
+            @Override
+            public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
+                ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
+
+              HandlerMethodReturnValueHandler handler = selectHandler(returnValue, returnType);
+              if (handler == null) {
+                throw new IllegalArgumentException("Unknown return value type: " + returnType.getParameterType().getName());
+              }
+              handler.handleReturnValue(returnValue, returnType, mavContainer, webRequest);
+            }
+
+         3. 返回值解析器原理
+            a. 返回值处理器判断是否支持这种类型返回值 supportsReturnType
+            b. 返回值处理器调用 handleReturnValue 进行处理
+            c RequestResponseBodyMethodProcessor 可以处理返回值标了 @ResponseBody 注解的
+              - 利用 MessageConverters 进行处理 将数据写为json
+                1) 内容协商（浏览器默认会以请求头的方式告诉服务器他能接受什么样的内容类型）
+                2) 服务器最终根据自己自身的能力，决定服务器能生产出什么样内容类型的数据
+                3) SpringMVC会挨个遍历所有容器底层的 HttpMessageConverter 看谁能处理
+                   - 得到MappingJackson2HttpMessageConverter可以将对象写为json
+                   - 利用MappingJackson2HttpMessageConverter将对象转为json再写出去
+
+         4. SpringMVC 支持的返回值类型
+            - ModelAndView
+            - Model
+            - View
+            - ResponseEntity
+            - ResponseBodyEmitter
+            - StreamingResponseBody
+            - HttpEntity
+            - HttpHeaders
+            - Callable
+            - DeferredResult
+            - ListenableFuture
+            - CompletionStage
+            - WebAsyncTask
+            - 有 @ModelAttribute 且为对象类型的
+            - @ResponseBody 注解 -> RequestResponseBodyMethodProcessor
+
+
 
 
 

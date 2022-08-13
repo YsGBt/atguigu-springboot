@@ -1,5 +1,6 @@
 package com.atguigu.springboot.controller;
 
+import com.atguigu.springboot.bean.Person;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,5 +72,10 @@ public class ParameterTestController {
     map.put("bossAge", bossAge);
     map.put("empAge", empAge);
     return map;
+  }
+
+  @PostMapping("/saveuser")
+  public Person saveUser(Person person) {
+    return person;
   }
 }
