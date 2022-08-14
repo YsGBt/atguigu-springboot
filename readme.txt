@@ -679,6 +679,13 @@ https://www.yuque.com/atguigu/springboot
          2. ReturnValueHandlers 返回值解析器 (ex. ModelAndViewMethodReturnValueHandler, ResponseBodyEmitterReturnValueHandler)
             - supportsReturnType(methodParameter): boolean
             - handleReturnValue(Object, methodParameter, ...): Object
+            - RequestResponseBodyMethodProcessor 可以处理返回值标了 @ResponseBody 注解的方法
+              - 利用 MessageConverters 进行处理 将数据写为json
+                - 内容协商 (浏览器默认会以请求头的方式告诉服务器它能接收什么样的内容类型)
+                - 服务器最终根据自身的能力，决定服务器能生产出什么样的内容类型的数据
+                - SpringMVC会挨个遍历所有容器底层的 HttpMessageConverter 看谁能处理
+                  - 得到 MappingJackson2HttpMessageConverter 可以将对象写为json
+                  - 利用 MappingJackson2HttpMessageConverter 将对象转为json再写出去
 
             @Override
             public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
@@ -718,6 +725,34 @@ https://www.yuque.com/atguigu/springboot
             - WebAsyncTask
             - 有 @ModelAttribute 且为对象类型的
             - @ResponseBody 注解 -> RequestResponseBodyMethodProcessor
+
+         5. 内容协商
+            - 根据客户端接收能力的不同，返回不同的媒体类型数据
+
+            a. 引入xml依赖
+               <dependency>
+                 <groupId>com.fasterxml.jackson.dataformat</groupId>
+                 <artifactId>jackson-dataformat-xml</artifactId>
+               </dependency>
+
+            b. 内容协商原理
+               1) 判断当前响应头中是否有确定的媒体类型 MediaType
+               2) 获取客户端(PostMan，浏览器等)支持接收的内容类型 (获取客户端请求头Accept字段)
+                  - 通过 contentNegotiationManager 内容协商管理器 默认使用基于请求头的策略
+               3) 遍历循环所有当前系统的 MessageConverter，看谁支持这个对象 (Person)
+               4) 找到支持操作Person的converter，把converter支持的媒体类型统计出来
+               5) 客户端需要 application/xml 服务端能处理 application/json /+json /xml 等
+               6) 进行内容协商的最佳匹配
+               7) 用支持将对象转为最佳匹配媒体类型的converter来转化
+
+         6. 开启浏览器参数方式内容协商功能
+            - 为了方便内容协商，开启基于请求参数的内容协商功能
+            - spring.contentnegotiation.favorParameter=true
+            - 开启后客户端请求中当携带参数 format=xxx时 服务器会优先返回xxx格式的内容
+              - ex. localhost:8080/test/person?format=xml -> 返回xml格式内容
+
+         7. 自定义 MessageConverter
+            a) 所有的 MessageConverter
 
 
 
