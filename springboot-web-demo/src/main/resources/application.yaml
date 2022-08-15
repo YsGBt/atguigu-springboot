@@ -6,3 +6,6 @@ spring:
     contentnegotiation:
       favor-parameter: true
 #    static-path-pattern: /res/**
+server:
+  servlet:
+    context-path: /atguigu

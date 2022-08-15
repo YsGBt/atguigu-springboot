@@ -752,10 +752,80 @@ https://www.yuque.com/atguigu/springboot
               - ex. localhost:8080/test/person?format=xml -> 返回xml格式内容
 
          7. 自定义 MessageConverter
-            a) 所有的 MessageConverter
+            a) 场景:
+               - 浏览器发请求返回xml                [application/xml]   jacksonXmlConverter
+               - ajax发请求返回json                [application/json]  jacksonJsonConverter
+               - 如果硅谷app发请求返回自定义协议数据   [application/x-guigu] xxxConverter
 
+            b) 步骤:
+               1) 添加自定义的MessageConverter进系统底层
+                  - 给容器中添加 WebMvcConfigurer 并实现方法 extendMessageConverters
+                    @Override
+                    public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+                      converters.add(new GuiguMessageConverter());
+                    }
 
+               2) 系统底层就会统计出所有MessageConverter能操作哪些类型
 
+               3) 客户端内容协商
 
+               4) 自定义基于请求参数的内容协商供能 (有多种实现方法，这里展示的方法会覆盖spring原本的配置所以不推荐，更推荐使用yaml)
+                  @Override
+                  public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+                    Map<String, MediaType> mediaTypes = new HashMap<>();
+                    // 指定支持解析哪些参数对应的哪些媒体类型
+                    mediaTypes.put("json", MediaType.APPLICATION_JSON);
+                    mediaTypes.put("xml", MediaType.APPLICATION_XML);
+                    mediaTypes.put("gg", MediaType.parseMediaType("application/x-guigu"));
+                    ParameterContentNegotiationStrategy strategy = new ParameterContentNegotiationStrategy(
+                        mediaTypes);
+                    configurer.strategies(Arrays.asList(strategy));
+                  }
 
+   6) 视图解析与模版引擎
+      - SpringBoot 默认不支持 JSP，需要引入第三方模版引擎技术实现页面渲染
+      1. Thymeleaf
+         表达式名字	    语法	        用途
+         变量取值	    ${...}     	获取请求域、session域、对象等值
+         选择变量	    *{...}	    获取上下文对象值
+         消息	        #{...}	    获取Thymeleaf工具中的方法，文字消息表达式
+         链接	        @{...}	    生成链接
+         片段表达式	    ~{...}	    jsp:include 作用，引入公共页面片段
+
+         a) 文本操作
+            字符串拼接: +
+            变量替换: |The name is ${name}|
+         b) 布尔运算
+            运算符:  and , or
+            一元运算: ! , not
+         c) 条件运算
+            If-then: (if) ? (then)
+            If-then-else: (if) ? (then) : (else)
+            Default: (value) ?: (defaultValue)
+
+      2. Thymeleaf 使用
+         a) 引入依赖 spring-boot-starter-thymeleaf
+            <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            </dependency>
+
+         b) SpringBoot 自动配置好 Thymeleaf
+            @Configuration(proxyBeanMethods = false)
+            @EnableConfigurationProperties(ThymeleafProperties.class)
+            @ConditionalOnClass({ TemplateMode.class, SpringTemplateEngine.class })
+            @AutoConfigureAfter({ WebMvcAutoConfiguration.class, WebFluxAutoConfiguration.class })
+            public class ThymeleafAutoConfiguration { }
+
+         c) 自动配好的策略
+            - 所有Thymeleaf的配置都在 ThymeleafProperties
+            - 配好了 SpringTemplateEngine
+            - 配好了 ThymeleafViewResolver
+            - 我们只需要直接开发页面
+            - public static final String DEFAULT_PREFIX = "classpath:/templates/";
+            - public static final String DEFAULT_SUFFIX = ".html"; // 默认跳转 xxx.html
+
+         d) 页面开发
+            - 引入名称空间
+              <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
