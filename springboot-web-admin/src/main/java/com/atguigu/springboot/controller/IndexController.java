@@ -36,11 +36,11 @@ public class IndexController {
   @GetMapping("/main.html")
   public String mainPage(HttpSession session, Model model) {
     // 是否登陆 (应该添加拦截器/过滤器来判断是否登陆)
-    Object user = session.getAttribute("loginUser");
-    if (user == null) {
-      model.addAttribute("msg", "请登陆");
-      return "login";
-    }
+//    Object user = session.getAttribute("loginUser");
+//    if (user == null) {
+//      model.addAttribute("msg", "请登陆");
+//      return "login";
+//    }
     return "main";
   }
 }

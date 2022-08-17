@@ -802,6 +802,12 @@ https://www.yuque.com/atguigu/springboot
             If-then: (if) ? (then)
             If-then-else: (if) ? (then) : (else)
             Default: (value) ?: (defaultValue)
+         d) 遍历
+            <tr class="gradeX" th:each="user,status:${users}">
+              <td th:text="${status.count}">Trident</td>
+              <td th:text="${user.userName}">Internet Explorer 4.0</td>
+              <td th:text="${user.password}">Win 95+</td>
+            </tr>
 
       2. Thymeleaf 使用
          a) 引入依赖 spring-boot-starter-thymeleaf
@@ -829,3 +835,44 @@ https://www.yuque.com/atguigu/springboot
             - 引入名称空间
               <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
+      3. 视图解析 源码分析
+         a) 目标方法处理的过程中，所有数据都会被放在 ModelAndViewContainer 里面 包括路径和视图地址
+         b) 方法的参数是一个自定义类型对象(从请求参数中确定的)时，会被放到 ModelAndViewContainer 中
+         c) 任何目标方法执行完成以后都会返回 ModelAndView (数据和视图地址)
+         d) processDispatchResult 处理派发结果 (页面如何响应)
+            1) render(mv, request, response); 进行页面渲染逻辑
+               a. 根据方法的 String 返回值得到 View 对象 (定义了页面的渲染逻辑)
+                  - 所有的视图解析器挨个尝试是否能根据当前返回值得到 View 对象
+                  - 得到了 'redirect:/main.html' -> RedirectView
+                  - ContentNegotiationViewResolver 里面包含了
+                    BeanNameViewResolver, ThymeleafViewResolver, ViewResolverComposite, InternalResourceViewResolver
+                    内部还是利用所包含的这些视图解析器得到视图对象
+                  - view.render(mv.getModelInternal(), request, response); 视图对象调用自定义的render进行页面渲染工作
+                    - RedirectView 渲染方式 (重定向到一个页面)
+                      1. 获取目标url地址
+                      2. response.sendRedirect(encodedURL);
+
+            2) ThymeleafViewResolver 三种情况:
+               a. 返回值以 forward: 开始: new InternalResourceView(forwardUrl); -> 转发
+                  request.getRequestDispatcher(path).forward(request, response);
+               b. 返回值以 redirect: 开始: new RedirectView() -> render 重定向
+               c. 返回值是普通字符串: new ThymeleafView()
+
+   7) 拦截器
+      1. 拦截器使用
+         a) 编写一个拦截器实现 HandlerInterceptor 接口
+         b) 拦截器注册到容器中 (实现 WebConfigurer 的 addInterceptors)
+         c) 指定拦截器规则 (在 addInterceptors 中) 如果是拦截所有'/**'需要注意静态资源也会被拦截
+
+      2. 拦截器 源码分析
+         a) 根据当前请求，找到 HandlerExecutionChain (可以处理请求的 handler 以及 handler 的所有拦截器)
+         b) DispatcherServlet 中 doDispatch:
+            if (!mappedHandler.applyPreHandle(processedRequest, response) return;
+         c) 先按顺序执行所有拦截器的 preHandle 方法
+            - 如果当前拦截器 preHandle 方法返回 true (放行) -> 则执行在一个拦截器的 preHandle
+            - 如果当前拦截器返回为 false (拦截) -> 倒叙执行所有已经执行了的拦截器的 afterCompletion 方法
+              -> 返回 false 并直接跳出 doDispatch 方法
+         d) 如果所有拦截器放行 -> 执行目标方法 ha.handle(...);
+         e) 按倒叙执行所有拦截器的 postHandle 方法
+         f) 在上述步骤中有任何异常都会直接倒叙触发拦截器的 afterCompletion 方法
+         g) 页面成功渲染完成后 倒叙触发拦截器的 afterCompletion 方法
