@@ -7,12 +7,14 @@ import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @Controller
 public class IndexController {
 
   // 访问登陆页
-  @GetMapping(value = {"/", "/login"})
+  @RequestMapping(value = {"/", "/login"}, method = {RequestMethod.POST, RequestMethod.GET})
   public String loginPage() {
     return "login";
   }

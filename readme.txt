@@ -876,3 +876,111 @@ https://www.yuque.com/atguigu/springboot
          e) 按倒叙执行所有拦截器的 postHandle 方法
          f) 在上述步骤中有任何异常都会直接倒叙触发拦截器的 afterCompletion 方法
          g) 页面成功渲染完成后 倒叙触发拦截器的 afterCompletion 方法
+
+   8) 文件上传
+      1. html 页面
+         <form role="form" th:action="@{/upload}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="exampleInputFile">头像</label>
+              <input type="file" name="headerImg" id="exampleInputFile">
+            </div>
+            <button type="submit" class="btn btn-primary">提交</button>
+         </form>
+
+      2. 文件上传代码
+          @PostMapping("/upload")
+           public String upload(@RequestPart(value = "headerImg", required = false) MultipartFile headerImg,
+               HttpSession session) throws IOException {
+
+             ServletContext servletContext = null;
+
+             if (headerImg != null && !headerImg.isEmpty()) {
+               // 保存到文件服务器, OSS服务器
+               // 获取上传文件的文件名
+               String headerImgName = headerImg.getOriginalFilename();
+               // 将UUID作为文件名
+               String uuid = UUID.randomUUID().toString();
+               // 将uuid和文件后缀名拼接后的结果作为最终的文件名
+               headerImgName = uuid + headerImgName;
+               // 通过ServletContext获取服务器中photo目录的路径
+               servletContext = session.getServletContext();
+               String headerImgPath = servletContext.getRealPath("/static/upload/userHeadImg");
+               File file = new File(headerImgPath);
+               // 判断photoPath所对应路径是否存在
+               if (!file.exists()) {
+                 // 若不存在，则创建目录
+                 file.mkdir();
+               }
+               String finalPath = headerImgPath + File.separator + headerImgName;
+               headerImg.transferTo(new File(finalPath));
+             }
+
+             return "main";
+           }
+
+      3. 文件上传自动配置原理
+         - 文件上传自动配置类 MultipartAutoConfiguration -> MultipartProperties
+           - 自动配置好了 StandardServletMultipartResolver 文件上传解析器
+
+         a) 客户端请求后 -> doDispatch -> checkMultipart
+            使用文件上传解析器判断(isMultipart)并封装文件上传请求(将所有文件信息封装成Map并保存在新封装的请求中)
+         b) 如果是文件上传请求 -> 文件上传解析器封装(resolveMultipart, 返回MultipartHttpServletRequest)文件上传请求
+         c) 参数解析器 RequestPartMethodArgumentResolver 来解析请求中的文件内容并封装成 Multipart
+         d) RequestPartMethodArgumentResolver 根据 @RequestPart的value 取出之前已经封装好的文件信息
+
+   9) 异常处理
+      1. 默认规则
+         - 默认情况下，SpringBoot 提供 /error 处理所有错误的映射
+         - 对于机器客户端，它将生成JSON响应，其中包含错误，HTTP状态和异常消息的详细信息
+           对于浏览器客户端，响应一个 “whitelabel” 错误视图，以HTML格式呈现相同的数据
+         - 要完全替换默认行为，可以实现 ErrorController 并注册该类型的Bean定义，
+           或添加ErrorAttributes类型的组件以使用现有机制但替换其内容
+
+         a) 自定义 error 页
+            - error/404.html error/5xx.html 有精确的错误状态码页面就匹配精确，没有就找 4xx.html 如果都没有就触发白页
+            - 自定义 404 错误页 / 5xx 错误页
+              src/
+               +- main/
+                   +- java/
+                   |   + <source code>
+                   +- resources/
+                       +- templates/
+                           +- error/
+                           |   +- 404.html
+                           |   +- 5xx.html
+                           +- <other public assets>
+
+         b) 定制错误处理逻辑
+            - @ControllerAdvice+@ExceptionHandler处理全局异常 底层是 ExceptionHandlerExceptionResolver 支持的
+            - @ResponseStatus+自定义异常 底层是 ResponseStatusExceptionResolver
+              把responsestatus注解的信息底层调用 response.sendError(statusCode, resolvedReason) tomcat发送的/error
+            - Spring底层的异常，如 参数类型转换异常；DefaultHandlerExceptionResolver 处理框架底层的异常
+              - response.sendError(HttpServletResponse.SC_BAD_REQUEST, ex.getMessage());
+            - 自定义实现 HandlerExceptionResolver 处理异常 可以作为默认的全局异常处理规则
+            - ErrorViewResolver  实现自定义处理异常
+              - response.sendError error请求就会转给controller
+              - 你的异常没有任何人能处理 tomcat底层 response.sendError error请求就会转给controller
+              - basicErrorController 要去的页面地址是 ErrorViewResolver
+
+         c) 异常处理自动配置原理
+            1) ErrorMvcAutoConfiguration 自动配置异常处理规则
+               a. 容器中配置了组件 类型: DefaultErrorAttributes -> id: errorAttributes
+                  - public class DefaultErrorAttributes implements ErrorAttributes, HandlerExceptionResolver
+                  - DefaultErrorAttributes: 定义错误页面中可以包含哪些数据
+
+               b. 容器中配置了组件 类型: BasicErrorController -> id: basicErrorController (json+白页 适配响应)
+                  - 处理默认 /error 路径的请求 -> 页面响应 new ModelAndView("error", model); (注意这里的"error"就是返回视图，即下一行)
+                  - 容器中配置了组件 类型: View -> id: error (响应默认错误页)
+                  - 容器中配置了组件 类型: BeanNameViewResolver 视图解析器 (按照返回的视图名作为组件的id去容器中找View对象)
+                    用来解析配置的 error View 视图
+                  - 如果想要返回页面 -> 找error视图 (默认响应白页)
+
+               c. 容器中配置了组件: 类型: DefaultErrorViewResolver -> id: conversionErrorViewResolver
+                  - 如果发生错误，会以HTTP的状态码作为视图页地址(viewName)，找到真正的页面
+                    - errorViewName = "error/" + viewName (ex."error/404" -> 响应 404.html 页面)
+
+               d. 总结:
+                  - 增加错误页面可以取到的值 -> 自定义 DefaultErrorAttributes
+                  - 更改跳转逻辑 -> 自定义 BasicErrorController
+                  - 更改错误页面路径 -> 自定义 DefaultErrorViewResolver
+
