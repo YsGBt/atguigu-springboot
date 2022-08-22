@@ -984,3 +984,25 @@ https://www.yuque.com/atguigu/springboot
                   - 更改跳转逻辑 -> 自定义 BasicErrorController
                   - 更改错误页面路径 -> 自定义 DefaultErrorViewResolver
 
+         d) 异常处理步骤流程
+            1) 执行目标方法，目标方法运行期间有任何异常都会被 catch
+               而且标志当前请求结束
+               并且用 dispatchException 接收
+            2) 进入视图解析流程 (页面渲染)
+               processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
+            3) 处理handler发生的异常 mv = processHandlerException()
+               处理完成返回 ModelAndView
+                a. 遍历所有的 handlerExceptionResolvers 看谁能处理异常 List<HandlerExceptionResolver>
+                b. 系统默认的 处理器异常解析器:
+                   - DefaultErrorAttributes: 先来处理异常 把异常信息保存到request域，并且返回null
+                   - HandlerExceptionResolverComposite
+                     - ExceptionHandlerExceptionResolver
+                     - ResponseStatusExceptionResolver
+                     - DefaultHandlerExceptionResolver
+                c. 默认没有任何 处理器异常解析器 能够处理异常 -> 异常会被抛出
+                d. 如果没有任何人能处理 -> 底层就会发送 /error 请求
+                   会被底层的 BasicErrorController 处理
+                e. 解析错误视图 遍历所有的 ErrorViewResolver 看谁能解析
+                f. 默认的 DefaultErrorViewResolver -> 响应状态码作为错误页地址 (ex."error/404" -> 响应 404.html 页面)
+                g. 模版引擎最终响应页面 error/404
+
