@@ -951,15 +951,20 @@ https://www.yuque.com/atguigu/springboot
                            +- <other public assets>
 
          b) 定制错误处理逻辑
-            - @ControllerAdvice+@ExceptionHandler处理全局异常 底层是 ExceptionHandlerExceptionResolver 支持的
-            - @ResponseStatus+自定义异常 底层是 ResponseStatusExceptionResolver
-              把responsestatus注解的信息底层调用 response.sendError(statusCode, resolvedReason) tomcat发送的/error
+            - @ControllerAdvice + @ExceptionHandler 处理全局异常 底层是 ExceptionHandlerExceptionResolver 支持的 (推荐)
+
+            - @ResponseStatus + 自定义异常 底层是 ResponseStatusExceptionResolver
+              把responsestatus注解的信息底层调用 response.sendError(statusCode, resolvedReason) tomcat发送的/error -> BasicErrorController
+
             - Spring底层的异常，如 参数类型转换异常；DefaultHandlerExceptionResolver 处理框架底层的异常
               - response.sendError(HttpServletResponse.SC_BAD_REQUEST, ex.getMessage());
+
             - 自定义实现 HandlerExceptionResolver 处理异常 可以作为默认的全局异常处理规则
-            - ErrorViewResolver  实现自定义处理异常
+              默认优先度最低 因此需要在类上添加注解 @Order(value = Ordered.HIGHEST_PRECEDENCE + 10) // 优先级，数字越小优先级越高
+
+            - ErrorViewResolver 实现自定义处理异常 (一般不使用)
               - response.sendError error请求就会转给controller
-              - 你的异常没有任何人能处理 tomcat底层 response.sendError error请求就会转给controller
+              - 你的异常没有任何HandlerExceptionResolver能处理 tomcat底层 response.sendError error请求就会转给controller
               - basicErrorController 要去的页面地址是 ErrorViewResolver
 
          c) 异常处理自动配置原理
@@ -1006,3 +1011,83 @@ https://www.yuque.com/atguigu/springboot
                 f. 默认的 DefaultErrorViewResolver -> 响应状态码作为错误页地址 (ex."error/404" -> 响应 404.html 页面)
                 g. 模版引擎最终响应页面 error/404
 
+   10) Web原生组件注入 (Servlet, Filter, Listener)
+       a) 使用Servlet API (推荐)
+          @ServletComponentScan(basePackages = "com.atguigu.springboot.servlet") -> 指定原生Servlet组件都放在哪里
+          @WebServlet(urlPatterns = "/my") -> 声明Servlet，直接响应，没有经过 SpringMVC 拦截器
+          @WebFilter(urlPatterns = {"/css/*", "/images/*"})
+          @WebListener
+
+       b) 使用 RegistrationBean (在com.atguigu.springboot.servlet.MyRegistrationConfig)
+          - ServletRegistrationBean, FilterRegistrationBean, ServletListenerRegistrationBean
+
+       c) 扩展: DispatchServlet 如何注册进来
+          1) 容器中自动配置了 DispatchServlet 属性绑定到 WebMvcProperties -> @ConfigurationProperties(prefix="spring.mvc")
+          2) 通过 ServletRegistrationBean<DispatchServlet> 把 DispatchServlet 配置进来 (默认映射 '/' 路径)
+          3) Tomcat-Servlet: 如果多个Servlet都能处理到同一层路径，精确优先原则
+
+   11) 嵌入式 Servlet 容器
+       a) 切换嵌入式Servlet容器
+          - 默认支持的 webServer
+            - Tomcat, Jetty, or Undertow
+            - ServletWebServerApplicationContext 容器启动寻找 ServletWebServerFactory 并引导创建服务器
+
+          - 切换服务器
+            - 先移除Tomcat场景
+              <dependency>
+                  <groupId>org.springframework.boot</groupId>
+                  <artifactId>spring-boot-starter-web</artifactId>
+                  <exclusions>
+                      <exclusion>
+                          <groupId>org.springframework.boot</groupId>
+                          <artifactId>spring-boot-starter-tomcat</artifactId>
+                      </exclusion>
+                  </exclusions>
+              </dependency>
+            - 添加其他服务器场景 (ex.undertow)
+              <dependency>
+                  <groupId>org.springframework.boot</groupId>
+                  <artifactId>spring-boot-starter-undertow</artifactId>
+              </dependency>
+
+          - 原理
+            - SpringBoot应用启动发现当前是Web应用 web场景包-导入tomcat
+            - web应用会创建一个web版的ioc容器 ServletWebServerApplicationContext
+            - ServletWebServerApplicationContext  启动的时候寻找 ServletWebServerFactory
+              (Servlet的web服务器工厂 -产出-> Servlet的web服务器)
+            - SpringBoot底层默认有很多的WebServer工厂
+              TomcatServletWebServerFactory, JettyServletWebServerFactory, or UndertowServletWebServerFactory
+            - 底层直接会有一个自动配置类 ServletWebServerFactoryAutoConfiguration
+            - ServletWebServerFactoryAutoConfiguration 导入了 ServletWebServerFactoryConfiguration (配置类)
+            - ServletWebServerFactoryConfiguration 配置类 根据 @ConditionalOnClass 判断系统中到底导入了那个Web服务器的包
+              (默认是web-starter导入tomcat包)，容器中就有 TomcatServletWebServerFactory
+            - TomcatServletWebServerFactory 创建出Tomcat服务器并启动
+              TomcatWebServer 的构造器拥有初始化方法 this.tomcat.start(); -> initialize();
+            - 内嵌服务器，就是把手动启动服务器的代码调用 (tomcat核心jar包存在)
+
+       b) 定制Servlet容器
+          - 实现  WebServerFactoryCustomizer<ConfigurableServletWebServerFactory>
+            - 把配置文件的值和 ServletWebServerFactory 进行绑定
+          - 修改配置文件 server.xxx (推荐)
+          - 直接自定义 ConfigurableServletWebServerFactory
+
+   12) 定制化原理
+       a) 定制化的常见方式
+          - 修改配置文件
+          - xxxxxCustomizer
+          - 编写自定义的配置类 xxxConfiguration + @Bean替换、增加容器中默认组件 (ex.视图解析器)
+          - Web应用 编写一个配置类实现 WebMvcConfigurer 即可定制化web功能 + @Bean给容器中再扩展一些组件
+            @Configuration
+            public class MyWebConfig implements WebMvcConfigurer {}
+          - @EnableWebMvc + WebMvcConfigurer —— @Bean 可以全面接管SpringMVC，所有规则全部自己重新配置 实现定制和扩展功能
+            - 原理
+              1) WebMvcAutoConfiguration  默认的SpringMVC的自动配置功能类: 静态资源，欢迎页...
+              2) 一旦使用 @EnableWebMvc 会 @Import(DelegatingWebMvcConfiguration.class)
+              3) DelegatingWebMvcConfiguration 的作用，只保证SpringMVC最基本的使用
+                 - 把所有系统中的 WebMvcConfigurer 拿过来 所有功能的定制都是IOC容器中所有的 WebMvcConfigurer 合起来一起生效
+                 - 自动配置了一些非常底层的组件: RequestMappingHandlerMapping 这些组件依赖的组件都是从容器中获取
+                 - public class DelegatingWebMvcConfiguration extends WebMvcConfigurationSupport
+              4) WebMvcAutoConfiguration 里面的配置要能生效 必须 @ConditionalOnMissingBean(WebMvcConfigurationSupport.class)
+              5) @EnableWebMvc 导致了 WebMvcAutoConfiguration 没有生效
+       b) 原理分析套路
+          - 场景starter -> xxxxAutoConfiguration -> 导入xxx组件 -> 绑定xxxProperties -> 绑定配置文件项

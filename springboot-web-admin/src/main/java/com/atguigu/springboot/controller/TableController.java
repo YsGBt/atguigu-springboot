@@ -1,6 +1,7 @@
 package com.atguigu.springboot.controller;
 
 import com.atguigu.springboot.bean.User;
+import com.atguigu.springboot.exception.TooManyUserException;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Controller;
@@ -36,6 +37,11 @@ public class TableController {
   @GetMapping("/editable_table")
   public String editable_table() {
     return "table/editable_table";
+  }
+
+  @GetMapping("/table_error_example")
+  public String table_error() {
+    throw new TooManyUserException();
   }
 
 }
