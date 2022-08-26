@@ -1091,3 +1091,53 @@ https://www.yuque.com/atguigu/springboot
               5) @EnableWebMvc 导致了 WebMvcAutoConfiguration 没有生效
        b) 原理分析套路
           - 场景starter -> xxxxAutoConfiguration -> 导入xxx组件 -> 绑定xxxProperties -> 绑定配置文件项
+
+7. 数据访问
+   1) SQL
+      a) 数据源的自动配置
+         1. 导入JDBC场景
+            <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-data-jdbc</artifactId>
+            </dependency>
+
+            - spring-boot-starter-data-jdbc 导入了数据源 (HikariCP)，jdbc (spring-jdbc)，事务 (spring-tx)
+            - 数据库驱动需要手动导入
+              - SpringBoot已经设置好版本，如果需要引入具体版本 (两种方法)
+                a. 直接依赖引入具体版本 (maven的就近依赖原则)
+                b. 重新声明版本 (maven的属性的就近优先原则)
+                   <properties>
+                       <java.version>1.8</java.version>
+                       <mysql.version>5.1.49</mysql.version>
+                   </properties>
+
+         2. 分析自动配置
+            a. 自动配置的类
+               - DataSourceAutoConfiguration: 数据的自动配置
+                 - 修改配置源相关的配置: spring.datasource
+                 - 数据库连接池的配置，是自己的容器中没有 DataSource 才自动配置
+                 - SpringBoot 默认配置的连接池是 HikariDataSource
+
+               - DataSourceTransactionManagerAutoConfiguration: 事务管理器的自动配置
+
+               - JdbcTemplateAutoConfiguration: JdbcTemplate 的自动配置，可以来对数据库进行crud
+                 - 通过修改 spring.jdbc 来修改 JdbcTemplate 的自动配置
+
+               - JndiDataSourceAutoConfiguration: Jndi的自动配置
+
+               - XADataSourceAutoConfiguration: 分布式事务相关的
+
+         3. 修改配置项
+            - 配置数据库连接所需要的参数
+              spring:
+                datasource:
+                  url: jdbc:mysql://localhost:3306/mybatis?characterEncoding=UTF-8
+                  username: javaConnection
+                  password: tztlx13GBT
+                  driver-class-name: com.mysql.cj.jdbc.Driver
+
+      b) 使用 Druid 数据源
+      c) 整合 MyBatis 操作
+      d) 整合 MyBatis-Plus 完成 CRUD
+
+

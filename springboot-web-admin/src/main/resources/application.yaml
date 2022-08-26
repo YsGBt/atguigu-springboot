@@ -5,3 +5,11 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
+  datasource:
+    url: jdbc:mysql://localhost:3306/mybatis?characterEncoding=UTF-8
+    username: javaConnection
+    password: tztlx13GBT
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jdbc:
+    template:
+      query-timeout: 3
