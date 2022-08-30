@@ -10,6 +10,24 @@ spring:
     username: javaConnection
     password: tztlx13GBT
     driver-class-name: com.mysql.cj.jdbc.Driver
+    druid:
+      stat-view-servlet: # 配置监控页功能
+        enabled: true
+        login-username: admin
+        login-password: 123
+      web-stat-filter: # 监控web
+        enabled: true
+        url-pattern: /*
+        exclusions: '*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*</param-value>'
+      aop-patterns: com.atguigu.springboot.* # 监控 Spring Bean
+      filters: stat,wall
+      filter:
+        stat: # 对上面filters里面的stat的详细配置
+          slow-sql-millis: 1000
+          log-slow-sql: true
+          enabled: true
+        wall:
+          enabled: true
   jdbc:
     template:
       query-timeout: 3

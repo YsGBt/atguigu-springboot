@@ -20,7 +20,7 @@ public class MyFilter implements Filter {
 
   @Override
   public void destroy() {
-    log.info("MyFilter Destory");
+    log.info("MyFilter Destroy");
   }
 
   @Override

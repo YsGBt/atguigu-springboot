@@ -1137,6 +1137,60 @@ https://www.yuque.com/atguigu/springboot
                   driver-class-name: com.mysql.cj.jdbc.Driver
 
       b) 使用 Druid 数据源
+         1. 通过自定义的方式使用 Druid
+            @Configuration
+            public class MyDataSourceConfig {
+
+              // 默认的自动配置是判断容器中没有才会配 @ConditionalOnMissingBean(DataSource.class)
+              @ConfigurationProperties("spring.datasource")
+              @Bean
+              public DataSource dataSource() throws SQLException {
+                DruidDataSource druidDataSource = new DruidDataSource();
+                // 加入防火墙和监控功能
+                druidDataSource.setFilters("wall,stat");
+                return druidDataSource;
+              }
+
+              // 配置 druid 的监控页功能
+              @Bean
+              public ServletRegistrationBean statViewServlet() {
+                StatViewServlet statViewServlet = new StatViewServlet();
+                ServletRegistrationBean<StatViewServlet> servletRegistrationBean = new ServletRegistrationBean<StatViewServlet>(
+                    statViewServlet, "/druid/*");
+                servletRegistrationBean.addInitParameter("loginUsername", "admin");
+                servletRegistrationBean.addInitParameter("loginPassword", "123");
+                return servletRegistrationBean;
+              }
+
+              // WebStatFilter 用于采集 web-jdbc 关联监控的数据
+              public FilterRegistrationBean webStatFilter() {
+                WebStatFilter webStatFilter = new WebStatFilter();
+                FilterRegistrationBean<WebStatFilter> webStatFilterFilterRegistrationBean = new FilterRegistrationBean<>(
+                    webStatFilter);
+                webStatFilterFilterRegistrationBean.setUrlPatterns(Arrays.asList("/*"));
+                webStatFilterFilterRegistrationBean.addInitParameter("exclusions",
+                    "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*</param-value>");
+                return webStatFilterFilterRegistrationBean;
+              }
+            }
+
+         2. 通过 starter 方式使用 Druid
+            a. 引入 druid-starter
+               <dependency>
+                   <groupId>com.alibaba</groupId>
+                   <artifactId>druid-spring-boot-starter</artifactId>
+                   <version>1.1.17</version>
+               </dependency>
+
+            b. 分析自动配置
+               - 扩展配置项 spring.datasource.druid
+               - DruidSpringAopConfiguration.class 监控SpringBean的配置项: spring.datasource.druid.aop-patterns
+               - DruidStatViewServletConfiguration.class 监控页的配置: spring.datasource.druid.stat-view-servlet 默认不开启
+               - DruidWebStatFilterConfiguration.class web监控配置: spring.datasource.druid.web-stat-filter 默认不开启
+               - DruidFilterConfiguration.class 所有Druid自己filter的配置
+
+            c. 官方文档 https://github.com/alibaba/druid/tree/master/druid-spring-boot-starter
+
       c) 整合 MyBatis 操作
       d) 整合 MyBatis-Plus 完成 CRUD
 
