@@ -2,9 +2,11 @@ spring:
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
+
   servlet:
     multipart:
       max-file-size: 10MB
+
   datasource:
     url: jdbc:mysql://localhost:3306/mybatis?characterEncoding=UTF-8
     username: javaConnection
@@ -28,6 +30,16 @@ spring:
           enabled: true
         wall:
           enabled: true
+
   jdbc:
     template:
       query-timeout: 3
+
+#mybatis:
+##  config-location: classpath:mybatis/mybatis-config.xml #全局配置文件位置 注意和configuration冲突
+#  mapper-locations: classpath:mybatis/mapper/*.xml  #sql映射文件位置
+#  type-aliases-package: com.atguigu.springboot.bean
+#  configuration: # 指定mybatis全局配置文件中的相关配置项
+#    map-underscore-to-camel-case: true
+mybatis-plus:
+  mapper-locations: classpath:mybatis/mapper/*.xml

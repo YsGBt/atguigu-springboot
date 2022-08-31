@@ -1192,6 +1192,99 @@ https://www.yuque.com/atguigu/springboot
             c. 官方文档 https://github.com/alibaba/druid/tree/master/druid-spring-boot-starter
 
       c) 整合 MyBatis 操作
-      d) 整合 MyBatis-Plus 完成 CRUD
+         - 导入mybatis-starter -> 编写mapper接口 -> 编写sql映射文件并绑定mapper接口(注意标注@Mapper) -> 在application.yaml中指定mapper配置文件的位置以及全局配置文件的信息(mybatis.configuration)
+         a. 引入 MyBatis Starter
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>2.1.4</version>
+            </dependency>
 
+         b. 分析自动配置
+            @EnableConfigurationProperties(MybatisProperties.class) // MyBatis配置项绑定类
+            @AutoConfigureAfter({ DataSourceAutoConfiguration.class, MybatisLanguageDriverAutoConfiguration.class })
+            public class MybatisAutoConfiguration {}
+
+            @ConfigurationProperties(prefix = "mybatis")
+            public class MybatisProperties
+
+            - SqlSessionFactory: 自动配置好了
+            - SqlSession: 自动配置了 SqlSessionTemplate (类里拥有SqlSession参数)
+            - Mapper: 只要我们写的操作MyBatis的接口标注了@Mapper就会被自动扫描进来
+
+         c. 可以通过xml来配置mybatis，或者也可以通过yaml中的mybatis.configuration属性来配置
+            - 可以不写全局配置文件mybatis-config.xml，所有全局配置文件的配置都放在configuration配置项中即可
+
+         d. 纯注解方式 (不常用)
+            - 可以xml/注解混用
+
+            - 使用注解
+              @Select("select * from t_employee where eid=#{id}")
+              Employee getEmployeeByAnnotation(@Param("id") Integer id);
+
+            - insert返回主键
+              @Options(useGeneratedKeys = true, keyProperty = "eid")
+
+         e. 最佳实战
+            - 引入mybatis-starter
+            - 在application.yaml中，指定mapper-location位置
+            - 编写Mapper接口并标注@Mapper注解 (或者使用 @MapperScan("com.atguigu.springboot.mapper") 简化)
+            - 简单方法直接注解方式
+            - 复杂方法编写mapper.xml进行绑定映射
+
+      d) 整合 MyBatis-Plus 完成 CRUD
+         - 官网 https://baomidou.com/
+         a. 引入 mybatis-plus-boot-starter
+            <dependency>
+              <groupId>com.baomidou</groupId>
+              <artifactId>mybatis-plus-boot-starter</artifactId>
+              <version>3.4.1</version>
+            </dependency>
+
+         b. 分析自动配置
+            - MybatisPlusAutoConfiguration 配置类
+            - MybatisPlusProperties 配置项绑定 mybatis-plus: xxx 就是对mybatis-plus的定制
+            - SqlSessionFactory: 自动配置好，底层是容器中默认的数据源
+            - MapperLocations: 配置好默认值: classpath*:/mapper/**/*.xml;
+              任意包的类路径下的所有mapper文件夹下任意路径下的所有xml都是sql映射文件 (建议以后sql映射文件放在mapper下)
+            - SqlSessionTemplate: 容器中也自动配置好了SqlSessionTemplate
+            - @Mapper 标注的接口也会被自动扫描
+
+         c. 使用
+            1) 使用MybatisPlus只需要我们的Mapper继承BaseMapper就可以拥有CRUD能力
+              - 创建Mapper
+              @Mapper
+              public interface MBPUserMapper extends BaseMapper<MBPUser> {}
+
+              - Pojo类
+              // 设置数据库映射table名
+              @TableName("user")
+              public class MBPUser {
+
+                private Long id;
+                private String name;
+                private Integer age;
+                private String email;
+
+                // 默认所有属性都应该在数据库中，如果属性不在数据库中则需要标注此属性不存在
+                @TableField(exist = false)
+                private Employee employee;
+              }
+
+              - 直接使用
+                @Test
+                void testUserMapper() {
+                  MBPUser user = userMapper.selectById(1L);
+                  log.info("用户信息: {}", user);
+                }
+
+            2) Service类 MybatisPlus也有实现，需要继承IService类
+              - 接口
+                public interface UserService extends IService<MBPUser> {
+                }
+
+              - 实现类
+                @Service
+                public class UserServiceImpl extends ServiceImpl<MBPUserMapper, MBPUser> implements UserService {
+                }
 

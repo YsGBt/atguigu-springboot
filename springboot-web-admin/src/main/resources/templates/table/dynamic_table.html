@@ -513,18 +513,44 @@
                   <thead>
                   <tr>
                     <th>#</th>
-                    <th>用户</th>
-                    <th>密码</th>
+                    <th>名字</th>
+                    <th>年龄</th>
+                    <th>邮箱</th>
+                    <th>删除</th>
                   </tr>
                   </thead>
                   <tbody>
-                  <tr class="gradeX" th:each="user,status:${users}">
-                    <td th:text="${status.count}">Trident</td>
-                    <td th:text="${user.userName}">Internet Explorer 4.0</td>
-                    <td th:text="${user.password}">Win 95+</td>
+                  <tr class="gradeX" th:each="user,status:${page.records}">
+                    <td th:text="${user.id}">1</td>
+                    <td th:text="${user.name}">Steven</td>
+                    <td th:text="${user.age}">21</td>
+                    <td th:text="${user.email}">1@gmail.com</td>
+                    <td>
+                      <a th:href="@{/user/delete/{id}(id=${user.id},page=${page.current})}" class="btn btn-danger btn-sm" type="button">删除</a>
+                    </td>
                   </tr>
                   </tbody>
                 </table>
+
+                <!-- 分页 -->
+                <div class="row-fluid">
+                  <div class="span6">
+                    <div class="dataTables_info" id="hidden-table-info_info">
+                      当前第 [[${page.current}]] 页 总计 [[${page.pages}]] 页 共 [[${page.total}]] 条记录
+                    </div>
+                  </div>
+                  <div class="span6">
+                    <div class="dataTables_paginate paging_bootstrap pagination">
+                      <ul>
+                        <li class="prev disabled"><a href="#">← Previous</a></li>
+                        <li th:class="${num == page.current?'active':''}" class="active" th:each="num:${#numbers.sequence(1, page.pages)}">
+                          <a th:href="@{/dynamic_table(page=${num})}" th:text="${num}">1</a>
+                        </li>
+                        <li class="next disabled"><a href="#">Next → </a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
 
               </div>
             </div>
@@ -553,7 +579,7 @@
         src="js/advanced-datatable/js/jquery.dataTables.js"></script>
 <script type="text/javascript" src="js/data-tables/DT_bootstrap.js"></script>
 <!--dynamic table initialization -->
-<script src="js/dynamic_table_init.js"></script>
+<!--<script src="js/dynamic_table_init.js"></script>-->
 
 </body>
 </html>
