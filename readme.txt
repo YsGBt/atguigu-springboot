@@ -1288,3 +1288,40 @@ https://www.yuque.com/atguigu/springboot
                 public class UserServiceImpl extends ServiceImpl<MBPUserMapper, MBPUser> implements UserService {
                 }
 
+      e) 整合 Redis
+         a. 引入 spring-boot-starter-data-redis
+            <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-data-redis</artifactId>
+            </dependency>
+
+         b. 自动配置分析
+            - RedisAutoConfiguration 自动配置类
+            - RedisProperties 属性类 -> spring.redis.xxx 是对redis的配置
+            - 连接工厂是准备好的 LettuceConnectionConfiguration 或 JedisConnectionConfiguration
+                                      key     value
+            - 自动注入了 RedisTemplate<Object, Object>: xxxTemplate
+            - 自动注入了 StringRedisTemplate: key, value 都是String
+            - 底层只要我们使用 StringRedisTemplate和RedisTemplate就可以操作redis
+
+         c. Redis 环境搭建
+            - 阿里云按量付费redis，经典网络
+            - 申请公网访问地址
+            - 设置白名单地址为 0.0.0.0/0 所有人都可以访问
+
+         d. 使用 Redis
+            @Autowired
+            private StringRedisTemplate stringRedisTemplate;
+
+            @Test
+            void testRedis() {
+              ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
+              operations.set("hello", "world");
+              String hello = operations.get("hello");
+              System.out.println(hello);
+            }
+
+         e. 切换 Jedis
+            - 导入 Jedis
+            - spring: redis: client-type: jedis # 设置Jedis为客户端
+

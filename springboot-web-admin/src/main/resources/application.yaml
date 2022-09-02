@@ -35,6 +35,13 @@ spring:
     template:
       query-timeout: 3
 
+#  redis: # 两种连接方式 url 或 host + port + password
+#    url: redis://user:password@example.com:6379
+#    host: example.com
+#    port: 6379
+#    password: user:password
+##    client-type: jedis # 设置Jedis为客户端
+
 #mybatis:
 ##  config-location: classpath:mybatis/mybatis-config.xml #全局配置文件位置 注意和configuration冲突
 #  mapper-locations: classpath:mybatis/mapper/*.xml  #sql映射文件位置
@@ -43,3 +50,4 @@ spring:
 #    map-underscore-to-camel-case: true
 mybatis-plus:
   mapper-locations: classpath:mybatis/mapper/*.xml
+

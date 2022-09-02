@@ -18,6 +18,9 @@ class SpringbootWebAdminApplicationTests {
   @Autowired
   private MBPUserMapper userMapper;
 
+//  @Autowired
+//  private StringRedisTemplate stringRedisTemplate;
+
   @Test
   void contextLoads() {
     Long query = jdbcTemplate.queryForObject("select count(*) from t_user", Long.class);
@@ -30,4 +33,11 @@ class SpringbootWebAdminApplicationTests {
     log.info("用户信息: {}", user);
   }
 
+//  @Test
+//  void testRedis() {
+//    ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
+//    operations.set("hello", "world");
+//    String hello = operations.get("hello");
+//    System.out.println(hello);
+//  }
 }
