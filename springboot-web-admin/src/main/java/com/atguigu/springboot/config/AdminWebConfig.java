@@ -21,9 +21,9 @@ public class AdminWebConfig implements WebMvcConfigurer {
         .excludePathPatterns("/", "/login", "/css/**", "/fonts/**", "/images/**", "/js/**",
             "/error"); // 放行的请求
 
-    registry.addInterceptor(redisUrlCountInterceptor)
-        .addPathPatterns("/**")
-        .excludePathPatterns("/", "/login", "/css/**", "/fonts/**", "/images/**", "/js/**",
-            "/error"); // 放行的请求
+//    registry.addInterceptor(redisUrlCountInterceptor)
+//        .addPathPatterns("/**")
+//        .excludePathPatterns("/", "/login", "/css/**", "/fonts/**", "/images/**", "/js/**",
+//            "/error"); // 放行的请求
   }
 }
